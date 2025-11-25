@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Manajemen Ujian Daring</title>
+    <!-- Load Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome untuk Ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <!-- Konfigurasi Tailwind untuk tema Monokrom: Abu-abu Gelap (primary) dan Putih -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-dark': '#1f2937', // Gray 800 (Abu-abu Gelap untuk teks/elemen utama)
+                        'secondary-dark': '#374151', // Gray 700 (Untuk latar belakang atau tombol sekunder)
+                        'bg-light': '#f9fafb', // Gray 50 (Latar belakang terang)
+                        'accent-gray': '#6b7280', // Gray 500 (Untuk teks sekunder)
+                        'success-mono': '#059669', // Warna hijau untuk sukses (bisa diubah ke abu-abu jika benar-benar ingin monokrom)
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'custom': '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 10px -5px rgba(0, 0, 0, 0.04)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Mengimpor font Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Spinner CSS Tailwind Custom */
+        .spinner-custom {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-bg-light min-h-screen flex items-center justify-center p-4">
+
+    <!-- Kontainer Utama (Menggantikan Bulma/Bootstrap Container) -->
+    <div class="w-full max-w-xl">
+
+        <!-- 2. LOGIN CONTAINER -->
+        <div id="login-container" class="bg-white p-8 md:p-10 rounded-xl shadow-custom mx-auto transition-all duration-300">
+            <h1 class="text-2xl font-extrabold text-primary-dark text-center mb-1">Sistem Ujian Online</h1>
+            <p class="text-sm text-accent-gray text-center mb-8">Silakan masuk untuk mengakses tautan ujian Anda.</p>
+
+            <form id="login-form">
+                <div class="mb-4">
+                    <label for="username-input" class="block text-sm font-medium text-accent-gray mb-1">Username</label>
+                    <div class="relative">
+                        <input type="text" id="username-input" required autocomplete="username"
+                            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:border-primary-dark focus:ring-1 focus:ring-primary-dark transition duration-150 text-primary-dark"
+                            placeholder="Masukkan Username">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                            <i class="fas fa-user"></i>
+                        </span>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label for="password-input" class="block text-sm font-medium text-accent-gray mb-1">Password</label>
+                    <div class="relative">
+                        <input type="password" id="password-input" required autocomplete="current-password"
+                            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:border-primary-dark focus:ring-1 focus:ring-primary-dark transition duration-150 text-primary-dark"
+                            placeholder="Masukkan Password">
+                        <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <button type="submit" id="login-button" disabled
+                            class="w-full flex items-center justify-center py-3 bg-primary-dark text-white rounded-lg font-semibold text-lg hover:bg-secondary-dark transition duration-300 disabled:opacity-70 disabled:cursor-not-allowed h-12">
+                        <span id="button-text">Memuat Data...</span>
+                        <span id="button-loader" class="spinner-custom hidden ml-2"></span>
+                    </button>
+                </div>
+                <p id="login-message" class="text-sm text-red-600 text-center mt-3"></p>
+            </form>
+        </div>
+
+        <!-- 3. EXAM LINK CONTAINER (Halaman Setelah Login) -->
+        <div id="exam-container" class="bg-white p-6 md:p-8 rounded-xl shadow-custom hidden">
+            <header class="mb-6 pb-4 border-b border-gray-200">
+                <h2 id="welcome-message" class="text-xl md:text-2xl font-bold text-primary-dark mb-1">Selamat Datang!</h2>
+                <!-- Menampilkan Kelas/Jurusan pengguna (user.kelas) -->
+                <p id="class-info" class="text-sm font-semibold text-secondary-dark"></p>
+            </header>
+
+            <section class="mb-6">
+                <h3 class="text-lg font-semibold text-primary-dark mb-4">Daftar Ujian Aktif Hari Ini</h3>
+                <div id="exam-list" class="space-y-4">
+                    <!-- Daftar ujian aktif akan disisipkan di sini secara dinamis -->
+                </div>
+            </section>
+
+            <footer class="pt-4 border-t border-gray-200">
+                <button id="logout-button"
+                        class="w-full flex items-center justify-center py-2.5 border border-red-500 text-red-600 rounded-lg font-medium hover:bg-red-50 transition duration-300">
+                    <span class="mr-2"><i class="fas fa-sign-out-alt"></i></span>
+                    <span>Keluar (Logout)</span>
+                </button>
+            </footer>
+        </div>
+        
+    </div> <!-- Tutup w-full max-w-xl -->
+    
+    <!-- 4. MODAL KONFIRMASI (Tailwind Modal) -->
+    <div class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hidden" id="confirmationModal">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+            <header class="flex justify-between items-start mb-4">
+                <h4 class="text-lg font-bold text-primary-dark">Konfirmasi Memulai Ujian</h4>
+                <button class="text-gray-400 hover:text-gray-600" data-dismiss="modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </header>
+            
+            <section class="mb-6">
+                <div class="bg-gray-100 border-l-4 border-primary-dark text-primary-dark p-3 rounded-md text-sm mb-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>
+                        Pastikan Anda siap dan memiliki koneksi internet yang stabil.
+                    </div>
+                </div>
+                <p class="text-sm text-accent-gray mb-1">Anda akan memulai ujian:</p>
+                <p class="text-lg font-extrabold text-primary-dark" id="modal-exam-name"></p>
+            </section>
+            
+            <footer class="flex justify-between space-x-3">
+                <button class="w-full py-2 border border-gray-300 text-primary-dark rounded-lg font-medium hover:bg-gray-100 transition duration-300" data-dismiss="modal">Batal</button>
+                <a id="modal-start-exam-button" href="#" target="_blank" class="w-full flex items-center justify-center py-2 bg-primary-dark text-white rounded-lg font-semibold hover:bg-secondary-dark transition duration-300">
+                    <span class="mr-2"><i class="fas fa-external-link-alt"></i></span>
+                    <span>Ya, Mulai Ujian</span>
+                </a>
+            </footer>
+        </div>
+    </div>
+
+
+    <!-- 5. JAVASCRIPT LOGIC -->
+    <script>
+        // URL Publik Google Sheet (CSV Output) untuk data pengguna (Sheet "user", gid=0)
+        const USER_DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4Y0U-9-PO74pFOjbU5jPrAk8lfWSzMAxSLp-4IukkYq_VOUSb1N_rtcO1QJAB09hHJuo37RWjCRo_/pub?gid=0&single=true&output=csv";
+        
+        // URL Publik Google Sheet (CSV Output) untuk data link ujian (Sheet "url ujian", gid=1366487320)
+        const EXAM_DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4Y0U-9-PO74pFOjbU5jPrAk8lfWSzMAxSLp-4IukkYq_VOUSb1N_rtcO1QJAB09hHJuo37RWjCRo_/pub?gid=1366487320&single=true&output=csv";
+        
+        // Global variable untuk menyimpan data pengguna yang diambil dari CSV
+        let APP_USERS = [];
+        
+        // Global variable untuk menyimpan list ujian (array of objects)
+        let APP_EXAM_LINKS = [];
+        
+        // --- Date Parsing Utility ---
+
+        // Fungsi untuk mengkonversi string tanggal menjadi objek Date yang dinormalisasi ke 00:00:00
+        function parseDateString(dateString) {
+            if (!dateString) return null;
+            
+            const cleanedString = dateString.trim().replace(/[\-.]/g, '/');
+            
+            let year, month, day;
+            let date;
+
+            // Coba parsing sebagai Date standar
+            date = new Date(cleanedString);
+
+            if (isNaN(date.getTime())) {
+                let parts;
+                
+                // Coba format YYYY/MM/DD
+                parts = cleanedString.match(/^(\d{2,4})\/(\d{1,2})\/(\d{1,2})/);
+                if (parts) {
+                    year = parseInt(parts[1], 10);
+                    month = parseInt(parts[2], 10); 
+                    day = parseInt(parts[3], 10);
+                }
+                
+                // Coba format DD/MM/YYYY
+                if (!parts) {
+                    parts = cleanedString.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+                    if (parts) {
+                        day = parseInt(parts[1], 10);
+                        month = parseInt(parts[2], 10);
+                        year = parseInt(parts[3], 10);
+                    }
+                }
+                
+                if (!parts || !year || !month || !day) {
+                    return null;
+                }
+            } else {
+                 year = date.getFullYear();
+                 month = date.getMonth() + 1; // 1-based
+                 day = date.getDate();
+            }
+
+            const normalizedDate = new Date(year, month - 1, day, 0, 0, 0, 0); 
+
+            if (isNaN(normalizedDate.getTime())) {
+                return null;
+            }
+            return normalizedDate;
+        }
+
+        // Format tanggal untuk tampilan (Hanya Tanggal, misal: 12 Nov 2025)
+        const formatDateOnly = (date) => date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    </script>
+
+
+    <!-- 5. JAVASCRIPT LOGIC -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loginContainer = document.getElementById('login-container');
+            const examContainer = document.getElementById('exam-container');
+            const loginForm = document.getElementById('login-form');
+            const loginMessage = document.getElementById('login-message');
+            const usernameInput = document.getElementById('username-input');
+            const passwordInput = document.getElementById('password-input');
+            const loginButton = document.getElementById('login-button');
+            const buttonText = document.getElementById('button-text');
+            const buttonLoader = document.getElementById('button-loader');
+            const logoutButton = document.getElementById('logout-button');
+            const welcomeMessage = document.getElementById('welcome-message');
+            const classInfo = document.getElementById('class-info');
+            const examListContainer = document.getElementById('exam-list');
+            
+            // Elemen Modal
+            const confirmationModalElement = document.getElementById('confirmationModal');
+            const modalContent = document.getElementById('modal-content');
+            const modalExamName = document.getElementById('modal-exam-name');
+            const modalStartExamButton = document.getElementById('modal-start-exam-button');
+
+            // --- Fungsi Utilitas Modal (Tailwind) ---
+            const showModal = () => {
+                confirmationModalElement.classList.remove('hidden');
+                // Tambahkan kelas transisi untuk efek masuk
+                setTimeout(() => {
+                    modalContent.classList.remove('scale-95', 'opacity-0');
+                    modalContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
+            };
+
+            const hideModal = () => {
+                // Tambahkan kelas transisi untuk efek keluar
+                modalContent.classList.remove('scale-100', 'opacity-100');
+                modalContent.classList.add('scale-95', 'opacity-0');
+                
+                // Sembunyikan setelah transisi selesai
+                setTimeout(() => {
+                    confirmationModalElement.classList.add('hidden');
+                }, 300); 
+            };
+            
+            // Event listener untuk menutup modal
+            document.querySelectorAll('[data-dismiss="modal"]').forEach((el) => {
+                el.addEventListener('click', hideModal);
+            });
+            
+            // Event listener untuk mengklik di luar modal (background)
+            confirmationModalElement.addEventListener('click', (e) => {
+                if (e.target === confirmationModalElement) {
+                    hideModal();
+                }
+            });
+
+
+            // --- Fungsi Utilitas UI ---
+
+            // Menampilkan atau menyembunyikan kontainer (menggunakan Tailwind .hidden)
+            const showContainer = (containerId) => {
+                loginContainer.classList.add('hidden');
+                examContainer.classList.add('hidden');
+                document.getElementById(containerId).classList.remove('hidden');
+            };
+            
+            // Menampilkan halaman ujian untuk user yang terotentikasi
+            const renderExamPage = (user) => {
+                const now = new Date();
+                
+                // Normalisasi waktu saat ini ke tengah malam (00:00:00) 
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0); 
+                
+                // 1. Filter ujian berdasarkan kelas pengguna
+                const userClass = user.class.toUpperCase(); 
+                
+                // Filter 1: Ujian yang kelasnya mencakup kelas pengguna (atau SERUM)
+                const relevantExams = APP_EXAM_LINKS.filter(exam => {
+                    const isSpecificClassMatch = exam.kelas.includes(userClass);
+                    const isSerumMatch = exam.kelas.includes("SERUM"); 
+                    return isSpecificClassMatch || isSerumMatch;
+                });
+
+                // Filter 2: Ujian yang saat ini aktif (mulai <= today <= akhir)
+                const activeExams = relevantExams.filter(exam => {
+                    const isMulaiValid = exam.mulai instanceof Date && !isNaN(exam.mulai);
+                    const isAkhirValid = exam.akhir instanceof Date && !isNaN(exam.akhir);
+                    
+                    if (!isMulaiValid || !isAkhirValid) {
+                        return false; 
+                    }
+
+                    // Ujian aktif jika waktu HARI INI berada di antara tanggal mulai (00:00:00) 
+                    // dan tanggal akhir (23:59:59.999)
+                    return today >= exam.mulai && today <= exam.akhir;
+                });
+
+
+                // Tampilan: Nama dan Kelas/Jurusan
+                welcomeMessage.textContent = `Selamat Datang, ${user.nama_siswa || user.username}!`;
+                // Menampilkan informasi kelas/jurusan pengguna
+                classInfo.textContent = `Kelas Anda: ${user.kelas || 'N/A'}`; 
+                
+                // Bersihkan daftar ujian lama
+                examListContainer.innerHTML = '';
+                
+                if (activeExams.length > 0) {
+                    activeExams.forEach(exam => {
+                        // Tentukan teks target kelas untuk ditampilkan
+                        const targetClassText = exam.kelas.includes("SERUM") 
+                            ? "SEMUA KELAS" 
+                            : exam.kelas.join(', ');
+
+                        // HTML KARTU UJIAN DENGAN TAILWIND (Menggunakan Flexbox/Card)
+                        const examItem = document.createElement('div');
+                        examItem.className = "bg-white p-4 rounded-lg shadow-md border-l-4 border-primary-dark hover:shadow-lg transition duration-300 transform hover:-translate-y-1 flex flex-col md:flex-row justify-between items-start md:items-center";
+
+                        examItem.innerHTML = `
+                            <div class="mb-3 md:mb-0 md:mr-4">
+                                <!-- Nama Mata Pelajaran (MAPEL) -->
+                                <p class="text-lg font-extrabold text-primary-dark">${exam.mapel}</p>
+
+                                <!-- Target Kelas/Jurusan -->
+                                <div class="mt-1 mb-2">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-200 text-secondary-dark">
+                                        <i class="fas fa-chalkboard-teacher mr-1"></i>
+                                        Target Kelas: ${targetClassText}
+                                    </span>
+                                </div>
+                                
+                                <!-- Jadwal dan Guru -->
+                                <p class="text-xs text-accent-gray flex items-center">
+                                    <span class="mr-3 flex items-center">
+                                        <i class="fas fa-calendar-check mr-1 text-primary-dark"></i>
+                                        Jadwal: ${formatDateOnly(exam.mulai)} s.d. ${formatDateOnly(exam.akhir)}
+                                    </span>
+                                    <span class="flex items-center">
+                                        <i class="fas fa-user-tie mr-1 text-accent-gray"></i>
+                                        Guru: ${exam.nama_guru || '-'}
+                                    </span>
+                                </p>
+                            </div>
+
+                            <!-- Tombol Mulai Ujian -->
+                            <button type="button" 
+                               class="w-full md:w-auto px-6 py-2 bg-primary-dark text-white rounded-lg font-semibold hover:bg-secondary-dark transition duration-300 start-exam-btn"
+                               data-mapel="${exam.mapel}" 
+                               data-url="${exam.url}">
+                                <span class="mr-2"><i class="fas fa-external-link-alt"></i></span>
+                                Mulai Ujian
+                            </button>
+                        `;
+                        examListContainer.appendChild(examItem);
+                    });
+                    
+                    // Tambahkan event listener untuk tombol yang baru dibuat
+                    document.querySelectorAll('.start-exam-btn').forEach(button => {
+                        button.addEventListener('click', function() {
+                            const examName = this.getAttribute('data-mapel');
+                            const examUrl = this.getAttribute('data-url');
+                            
+                            // 1. Update konten modal
+                            modalExamName.textContent = examName;
+                            modalStartExamButton.href = examUrl; 
+                            
+                            // 2. Tampilkan modal Tailwind
+                            showModal();
+                        });
+                    });
+
+                } else {
+                    // Tampilkan pesan jika tidak ada ujian aktif
+                    const noExamHtml = `
+                        <div class="bg-gray-50 border border-gray-300 text-accent-gray p-4 rounded-lg text-center">
+                            <i class="fas fa-info-circle text-lg mr-2"></i>
+                            <p class="font-semibold text-sm">Tidak ada ujian aktif saat ini untuk kelas Anda.</p>
+                            <p class="text-xs mt-1">Silakan cek jadwal ujian Anda atau hubungi administrator.</p>
+                        </div>
+                    `;
+                    examListContainer.innerHTML = noExamHtml;
+                }
+                
+                showContainer('exam-container');
+            };
+
+            // --- CSV Parsing Utility ---
+
+            // Mengubah teks CSV menjadi array of objects
+            function parseCSV(csvText) {
+                const lines = csvText.trim().split('\n').filter(line => line.trim() !== ''); // Filter baris kosong
+                if (lines.length <= 1) return [];
+
+                // Ambil header (baris pertama) dan bersihkan (lowercase, ganti spasi dengan underscore)
+                const headers = lines[0].split(',').map(header => header.trim().toLowerCase().replace(/ /g, '_'));
+
+                const data = [];
+                for (let i = 1; i < lines.length; i++) {
+                    // Gunakan regex untuk memecah baris berdasarkan koma, sambil mengabaikan koma di dalam tanda kutip ganda
+                    const values = lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+                    
+                    if (!values) continue; // Skip if no values found
+                    
+                    const cleanedValues = values.map(v => v.replace(/^"|"$/g, '').trim());
+
+                    if (cleanedValues.length !== headers.length) {
+                         // Abaikan baris dengan jumlah kolom yang tidak cocok
+                         continue; 
+                    }
+
+                    const obj = {};
+                    headers.forEach((header, index) => {
+                        obj[header] = cleanedValues[index] ? cleanedValues[index].trim() : '';
+                    });
+                    
+                    data.push(obj);
+                }
+                return data;
+            }
+
+            // --- Core Function: Fetch Data ---
+
+            // Mengambil data pengguna dari Google Spreadsheet (CSV)
+            async function fetchUserData() {
+                try {
+                    const response = await fetch(USER_DATA_URL);
+                    if (!response.ok) {
+                        throw new Error(`Gagal memuat data pengguna: ${response.status} ${response.statusText}`);
+                    }
+
+                    const csvText = await response.text();
+                    const userDataArray = parseCSV(csvText);
+
+                    // Hanya terima pengguna yang memiliki username, password, dan kelas.
+                    APP_USERS = userDataArray.filter(obj => obj.username && obj.password && obj.kelas)
+                        .map(obj => ({
+                            ...obj,
+                            // TRIMMING UNTUK MENCEGAH MASALAH LOGIN KARENA SPASI
+                            username: obj.username.trim(), 
+                            password: obj.password.trim(), 
+                            class: obj.kelas.trim().toUpperCase(), // Simpan kelas dalam uppercase untuk filtering
+                            nama_siswa: obj.nama_siswa || obj.username, // Fallback jika nama_siswa kosong
+                            kelas: obj.kelas || 'N/A' // Fallback jika kelas kosong
+                        }));
+                    
+                    if (APP_USERS.length === 0) {
+                        throw new Error('Data pengguna kosong atau format CSV tidak valid.');
+                    }
+                } catch (error) {
+                    console.error("Kesalahan saat memuat data pengguna:", error);
+                    throw error; 
+                }
+            }
+
+            // Mengambil data link ujian dari Google Spreadsheet (CSV)
+            async function fetchExamLinks() {
+                try {
+                    const response = await fetch(EXAM_DATA_URL);
+                    if (!response.ok) {
+                        throw new Error(`Gagal memuat link ujian: ${response.status} ${response.statusText}`);
+                    }
+
+                    const csvText = await response.text();
+                    const examDataArray = parseCSV(csvText); 
+
+                    APP_EXAM_LINKS = examDataArray.map((item, index) => {
+                        // Kunci yang dicari: mapel, kelas, mulai, akhir, url, nama_guru
+                        const isValid = item.kelas && item.url && item.mapel && item.mulai && item.akhir;
+                        
+                        if (!isValid) {
+                             return null;
+                        }
+
+                        const parsedMulai = parseDateString(item.mulai);
+                        const parsedAkhir = parseDateString(item.akhir);
+
+                        if (parsedAkhir) {
+                           // Set waktu akhir ke akhir hari (23:59:59.999) 
+                           parsedAkhir.setHours(23, 59, 59, 999); 
+                        }
+
+                        if (!parsedMulai || !parsedAkhir) {
+                             return null;
+                        }
+
+                        // Semua valid
+                        return {
+                            mapel: item.mapel,
+                            nama_guru: item.nama_guru,
+                            // Split string 'kelas' (comma-separated) into an array and uppercase
+                            kelas: item.kelas.split(',').map(c => c.trim().toUpperCase()).filter(c => c.length > 0), 
+                            mulai: parsedMulai,
+                            akhir: parsedAkhir,
+                            url: item.url
+                        };
+                    }).filter(item => item !== null);
+
+                } catch (error) {
+                    console.error("Kesalahan saat memuat link ujian:", error);
+                    throw error; 
+                }
+            }
+            
+            // Initalisasi data saat startup
+            async function initializeData() {
+                buttonText.textContent = 'Memuat Data...';
+                buttonLoader.classList.remove('hidden');
+                loginButton.disabled = true;
+                loginMessage.textContent = ''; 
+                
+                let userDataLoaded = false;
+
+                try {
+                    // 1. Fetch User Data
+                    await fetchUserData();
+                    userDataLoaded = true;
+
+                    // Data pengguna berhasil dimuat, aktifkan tombol login
+                    loginButton.disabled = false;
+                    buttonText.textContent = 'Masuk';
+                    loginMessage.textContent = 'Data siap. Silakan masuk.';
+
+                } catch (error) {
+                    // Jika data pengguna gagal, hentikan dan tampilkan error
+                    loginMessage.textContent = `Kesalahan FATAL: Gagal memuat data pengguna. Silakan coba muat ulang halaman.`;
+                    buttonText.textContent = 'Data Gagal Dimuat';
+                }
+
+                try {
+                    // 2. Fetch Exam Data
+                    await fetchExamLinks();
+                } catch (error) {
+                    if (userDataLoaded) {
+                         // Biarkan pengguna login meskipun data ujian mungkin kosong
+                         loginMessage.textContent = 'Login siap. Data ujian mungkin tidak lengkap.';
+                    }
+                } finally {
+                    buttonLoader.classList.add('hidden');
+                    // Cek otentikasi (sesi) hanya jika data pengguna berhasil dimuat
+                    if (userDataLoaded) {
+                         checkAuth();
+                    }
+                }
+            }
+
+
+            // --- Otentikasi dan Sesi ---
+
+            // Memeriksa status otentikasi saat memuat halaman
+            const checkAuth = () => {
+                const dataReady = APP_USERS.length > 0;
+                
+                if (dataReady) {
+                    loginButton.disabled = false;
+                    buttonText.textContent = 'Masuk';
+                }
+
+                const storedUser = localStorage.getItem('auth_user');
+                if (storedUser) {
+                    try {
+                        const user = JSON.parse(storedUser);
+                        // Cek apakah user yang tersimpan masih ada di data yang baru dimuat
+                        const existingUser = APP_USERS.find(u => u.username === user.username);
+                        if (existingUser) {
+                             renderExamPage(existingUser);
+                        } else {
+                             // User lama tidak ada di data baru, paksa logout
+                             localStorage.removeItem('auth_user');
+                             showContainer('login-container');
+                        }
+                       
+                    } catch (e) {
+                        localStorage.removeItem('auth_user');
+                        showContainer('login-container');
+                    }
+                } else {
+                    showContainer('login-container');
+                }
+            };
+
+            // --- Event Listeners ---
+
+            // 1. Login Handler
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                loginMessage.textContent = '';
+
+                if (APP_USERS.length === 0) {
+                    loginMessage.textContent = 'Data pengguna belum dimuat. Mohon tunggu atau cek pesan kesalahan.';
+                    return;
+                }
+
+                const username = usernameInput.value.trim();
+                const password = passwordInput.value.trim();
+
+                const user = APP_USERS.find(u => 
+                    u.username === username && u.password === password
+                );
+
+                if (user) {
+                    // Otentikasi Berhasil
+                    localStorage.setItem('auth_user', JSON.stringify(user));
+                    renderExamPage(user);
+                } else {
+                    // Otentikasi Gagal
+                    loginMessage.textContent = 'Username atau Password salah. Silakan coba lagi.';
+                }
+            });
+
+            // 2. Logout Handler
+            logoutButton.addEventListener('click', () => {
+                localStorage.removeItem('auth_user');
+                loginForm.reset(); // Kosongkan formulir
+                showContainer('login-container');
+            });
+
+            // Mulai proses: Ambil semua data yang diperlukan
+            initializeData();
+        });
+    </script>
+</body>
+</html>
