@@ -20,6 +20,8 @@
                         'bg-light': '#f9fafb', // Gray 50 (Latar belakang terang)
                         'accent-gray': '#6b7280', // Gray 500 (Untuk teks sekunder)
                         'success-mono': '#059669', // Warna hijau untuk sukses (bisa diubah ke abu-abu jika benar-benar ingin monokrom)
+                        'warning-mono': '#f59e0b', // Yellow 500
+                        'danger-mono': '#ef4444', // Red 500
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
@@ -126,29 +128,31 @@
     </div> <!-- Tutup w-full max-w-xl -->
     
     <!-- 4. MODAL KONFIRMASI (Tailwind Modal) -->
+    <!-- Modal untuk Konfirmasi atau Notifikasi Batas Waktu -->
     <div class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hidden" id="confirmationModal">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
             <header class="flex justify-between items-start mb-4">
-                <h4 class="text-lg font-bold text-primary-dark">Konfirmasi Memulai Ujian</h4>
+                <h4 class="text-lg font-bold text-primary-dark" id="modal-title">Konfirmasi Memulai Ujian</h4>
                 <button class="text-gray-400 hover:text-gray-600" data-dismiss="modal">
                     <i class="fas fa-times"></i>
                 </button>
             </header>
             
             <section class="mb-6">
-                <div class="bg-gray-100 border-l-4 border-primary-dark text-primary-dark p-3 rounded-md text-sm mb-4">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                        Pastikan Anda siap dan memiliki koneksi internet yang stabil.
-                    </div>
+                <!-- Message Box dinamis untuk Konfirmasi/Peringatan -->
+                <div id="modal-message-box" class="p-3 rounded-md text-sm mb-4">
+                    <!-- Konten pesan akan dimasukkan di sini oleh JS -->
                 </div>
-                <p class="text-sm text-accent-gray mb-1">Anda akan memulai ujian:</p>
+                
+                <p class="text-sm text-accent-gray mb-1">Nama Ujian:</p>
                 <p class="text-lg font-extrabold text-primary-dark" id="modal-exam-name"></p>
             </section>
             
             <footer class="flex justify-between space-x-3">
-                <button class="w-full py-2 border border-gray-300 text-primary-dark rounded-lg font-medium hover:bg-gray-100 transition duration-300" data-dismiss="modal">Batal</button>
-                <a id="modal-start-exam-button" href="#" target="_blank" class="w-full flex items-center justify-center py-2 bg-primary-dark text-white rounded-lg font-semibold hover:bg-secondary-dark transition duration-300">
+                <button class="w-full py-2 border border-gray-300 text-primary-dark rounded-lg font-medium hover:bg-gray-100 transition duration-300" data-dismiss="modal">Tutup</button>
+                
+                <!-- Tombol Aksi Ujian (disembunyikan jika tidak diperbolehkan) -->
+                <a id="modal-start-exam-button" href="#" target="_blank" class="w-full flex items-center justify-center py-2 bg-primary-dark text-white rounded-lg font-semibold hover:bg-secondary-dark transition duration-300 hidden">
                     <span class="mr-2"><i class="fas fa-external-link-alt"></i></span>
                     <span>Ya, Mulai Ujian</span>
                 </a>
@@ -248,13 +252,30 @@
             // Elemen Modal
             const confirmationModalElement = document.getElementById('confirmationModal');
             const modalContent = document.getElementById('modal-content');
+            const modalTitle = document.getElementById('modal-title'); // Tambahan: Judul modal
+            const modalMessageBox = document.getElementById('modal-message-box'); // Tambahan: Kotak pesan
             const modalExamName = document.getElementById('modal-exam-name');
             const modalStartExamButton = document.getElementById('modal-start-exam-button');
 
+            // --- Batasan Waktu Ujian (Hardcode Sesuai Permintaan) ---
+            const START_HOUR = 15; // Pukul 15:00
+            const END_HOUR = 20;   // Pukul 20:00
+
             // --- Fungsi Utilitas Modal (Tailwind) ---
-            const showModal = () => {
+            const showModal = (title, messageHtml, isConfirm = true, examUrl = '#') => {
+                modalTitle.textContent = title;
+                modalMessageBox.innerHTML = messageHtml;
+                
+                // Atur visibility tombol Mulai Ujian
+                if (isConfirm) {
+                    modalStartExamButton.classList.remove('hidden');
+                    modalStartExamButton.href = examUrl;
+                } else {
+                    modalStartExamButton.classList.add('hidden');
+                }
+
+                // Tampilkan Modal
                 confirmationModalElement.classList.remove('hidden');
-                // Tambahkan kelas transisi untuk efek masuk
                 setTimeout(() => {
                     modalContent.classList.remove('scale-95', 'opacity-0');
                     modalContent.classList.add('scale-100', 'opacity-100');
@@ -389,12 +410,8 @@
                             const examName = this.getAttribute('data-mapel');
                             const examUrl = this.getAttribute('data-url');
                             
-                            // 1. Update konten modal
-                            modalExamName.textContent = examName;
-                            modalStartExamButton.href = examUrl; 
-                            
-                            // 2. Tampilkan modal Tailwind
-                            showModal();
+                            // 1. Panggil fungsi pengecekan waktu
+                            checkExamTime(examName, examUrl);
                         });
                     });
 
@@ -412,6 +429,68 @@
                 
                 showContainer('exam-container');
             };
+
+            // --- Fungsi Pengecekan Batas Waktu Ujian (MODIFIKASI INTI) ---
+            function checkExamTime(examName, examUrl) {
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinutes = now.getMinutes();
+
+                // 1. Buat objek Date untuk waktu mulai hari ini (15:00)
+                const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), START_HOUR, 0, 0, 0);
+
+                // 2. Buat objek Date untuk waktu akhir hari ini (20:00)
+                const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), END_HOUR, 0, 0, 0);
+                
+                // 1. Cek jika sebelum jam 15:00
+                if (now < startTime) {
+                    const diffMs = startTime - now; // Selisih waktu dalam milidetik
+                    const diffMins = Math.ceil(diffMs / (1000 * 60)); // Bulatkan ke atas ke menit terdekat
+
+                    const messageHtml = `
+                        <div class="bg-yellow-50 border-l-4 border-warning-mono text-warning-mono p-3 rounded-md text-sm mb-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-clock mr-2"></i>
+                                Link ujian dapat diakses pukul ${START_HOUR}:00.
+                            </div>
+                            <p class="mt-1 ml-5 font-bold">Kurang ${diffMins} menit lagi.</p>
+                        </div>
+                    `;
+                    modalExamName.textContent = examName;
+                    showModal('Ujian Belum Dimulai', messageHtml, false);
+                    return;
+                }
+
+                // 2. Cek jika setelah jam 20:00
+                if (now > endTime) {
+                    const messageHtml = `
+                        <div class="bg-red-50 border-l-4 border-danger-mono text-danger-mono p-3 rounded-md text-sm mb-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-times-circle mr-2"></i>
+                                Link ujian tidak dapat diakses.
+                            </div>
+                            <p class="mt-1 ml-5 font-bold">Telah melampaui batas waktu ujian (${END_HOUR}:00).</p>
+                        </div>
+                    `;
+                    modalExamName.textContent = examName;
+                    showModal('Ujian Selesai', messageHtml, false);
+                    return;
+                }
+
+                // 3. Jika di antara jam 15:00 dan 20:00 (Waktu Akses Valid)
+                const messageHtml = `
+                    <div class="bg-gray-100 border-l-4 border-primary-dark text-primary-dark p-3 rounded-md text-sm mb-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Pastikan Anda siap dan memiliki koneksi internet yang stabil.
+                        </div>
+                        <p class="mt-2 ml-5">Anda memiliki waktu hingga pukul ${END_HOUR}:00 untuk memulai ujian ini.</p>
+                    </div>
+                `;
+                modalExamName.textContent = examName;
+                showModal('Konfirmasi Memulai Ujian', messageHtml, true, examUrl);
+            }
+
 
             // --- CSV Parsing Utility ---
 
